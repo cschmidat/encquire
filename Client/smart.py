@@ -1,0 +1,90 @@
+# ==============================================================================
+#  Copyright 2018-2020 Intel Corporation
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+# ==============================================================================
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+import time
+import argparse
+import numpy as np
+import pandas as pd
+import sys
+import os
+import json
+import requests
+from flask import Flask, request, render_template
+
+from fhir_util import load_fhir_data, load_mnist_data, client_argument_parser
+import pyhe_client
+
+def xtest_from_json(jsonatt):
+    testdf = pd.read_json(jsonatt, typ='series', convert_dates=False)
+    testdf = testdf[["age","bmi"]]
+    return testdf
+
+def get_fhir_record(url, patid, token):
+    payload = {'id': patid, 'token': token}
+    with requests.session() as session:
+        response = session.post(url, json=payload)
+    return response.json()
+
+def test_network(FLAGS, xtest):
+    (x_train, y_train, x_test, y_test) = load_fhir_data(
+        0, 1)
+    x_test = xtest.to_numpy().astype("float32")
+    data = x_test.flatten("C")
+    print(data)
+    print(FLAGS)
+    client = pyhe_client.HESealClient(
+        "ec2-44-233-171-224.us-west-2.compute.amazonaws.com",
+        FLAGS.port,
+        1,
+        {FLAGS.tensor_name: ("encrypt", data)},
+    )
+    results = np.array(client.get_results()).reshape(FLAGS.batch_size,2)
+    print(results)
+#    results = np.round(client.get_results(), 2)
+
+#    y_pred_reshape = np.argmax(results).reshape(FLAGS.batch_size, 2)
+    
+
+    y_pred = np.argmax(results,1)
+    print("y_pred", y_pred)
+    return y_pred
+#    correct = np.sum(np.equal(y_pred, y_test))
+#    acc = correct / float(FLAGS.batch_size)
+#    print("correct", correct)
+#    print("Accuracy (batch size", FLAGS.batch_size, ") =", acc * 100.0, "%")
+
+app = Flask(__name__)
+
+@app.route('/', methods=['GET'])
+def health_ret():
+    url = request.args.get('server')
+    patid = request.args.get('id')
+    token = request.args.get('token')
+    jsonatt = get_fhir_record(url, patid, token)
+    xtest = xtest_from_json(jsonatt)
+    print(xtest)
+    data = test_network(FLAGS, xtest.to_frame())[0]
+    outcomes = ["survive", "die"]
+    outcome = outcomes[data]
+    return(render_template('smart_template.html', outcome=outcome, patid=patid))
+if __name__ == "__main__":
+    FLAGS, unparsed = client_argument_parser().parse_known_args()
+    if unparsed:
+        print("Unparsed flags:", unparsed)
+        exit(1)
+    app.run(host='0.0.0.0', port=8502, debug=True)
