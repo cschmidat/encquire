@@ -6,8 +6,9 @@ Build [Intel nGraph HE](https://github.com/IntelAI/he-transformer) according to 
 
 Then train a model and create a `model.pb` protobuf file. To serve it, invoke
 
-```python test.py --backend=HE_SEAL --model_file=model.pb --enable_client=true --encryption_parameters=parameters.json
 ```
-where parameters.json contains the appropriate cryptographic parameters.
+python test.py --backend=HE_SEAL --model_file=model.pb --enable_client=true --encryption_parameters=parameters.json
+```
+where `parameters.json` contains the appropriate cryptographic parameters.
 
 On the client, simply run the appropriate files as web services.
