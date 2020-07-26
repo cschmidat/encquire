@@ -14,6 +14,7 @@ from flask import Flask, request, render_template
 from fhir_util import load_fhir_data, load_mnist_data, client_argument_parser
 import pyhe_client
 
+hostname = ""
 def xtest_from_json(jsonatt):
     testdf = pd.read_json(jsonatt, typ='series', convert_dates=False)
     testdf = testdf[["age","bmi"]]
@@ -33,25 +34,20 @@ def test_network(FLAGS, xtest):
     print(data)
     print(FLAGS)
     client = pyhe_client.HESealClient(
-        "ec2-44-233-171-224.us-west-2.compute.amazonaws.com",
+        hostname,
         FLAGS.port,
         1,
         {FLAGS.tensor_name: ("encrypt", data)},
     )
     results = np.array(client.get_results()).reshape(FLAGS.batch_size,2)
     print(results)
-#    results = np.round(client.get_results(), 2)
 
-#    y_pred_reshape = np.argmax(results).reshape(FLAGS.batch_size, 2)
     
 
     y_pred = np.argmax(results,1)
     print("y_pred", y_pred)
     return y_pred
-#    correct = np.sum(np.equal(y_pred, y_test))
-#    acc = correct / float(FLAGS.batch_size)
-#    print("correct", correct)
-#    print("Accuracy (batch size", FLAGS.batch_size, ") =", acc * 100.0, "%")
+
 
 app = Flask(__name__)
 
