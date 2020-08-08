@@ -1,3 +1,6 @@
+"""Smart Flask app for prediction."""
+
+#Silence warnings
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -16,17 +19,29 @@ import pyhe_client
 
 hostname = ""
 def xtest_from_json(jsonatt):
+    """Get test set from JSON request.
+        jsonatt: json object from FHIR response.
+        :return: np.ndarray with EHR data."""
+
     testdf = pd.read_json(jsonatt, typ='series', convert_dates=False)
     testdf = testdf[["age","bmi"]]
     return testdf
 
-def get_fhir_record(url, patid, token):
+def get_fhir_record(url: str, patid: int, token: str):
+    """Get FHIR data from server as JSON.
+       url: server url
+       patid: Patient id
+       :return: json response"""
     payload = {'id': patid, 'token': token}
     with requests.session() as session:
         response = session.post(url, json=payload)
     return response.json()
 
 def test_network(FLAGS, xtest):
+        """Encrypt data and send to inference server.
+        FLAGS: Client flags.
+        xtest: ndarray with EHR data.
+        :return: float with mortality prediction"""
     (x_train, y_train, x_test, y_test) = load_fhir_data(
         0, 1)
     x_test = xtest.to_numpy().astype("float32")
@@ -53,6 +68,7 @@ app = Flask(__name__)
 
 @app.route('/', methods=['GET'])
 def health_ret():
+    """Main FLASK app."""
     url = request.args.get('server')
     patid = request.args.get('id')
     token = request.args.get('token')

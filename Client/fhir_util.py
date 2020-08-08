@@ -18,17 +18,19 @@ def print_nodes(graph_def=None):
 
     print("nodes", nodes)
 
-def load_fhir_data(start_batch=0, batch_size=10000):
+def load_fhir_data(start_batch=0, batch_size=10000) -> np.ndarray:
         """
-        
+        Get data from dataset, do preprocessing steps (see notebook for details, this is just a copy)
         """
     df = pd.read_csv('training_v2.csv')
+    #One-hot encoding
     def one_hot(df, colname): 
         return pd.concat([df,pd.get_dummies(df[colname], prefix=colname,dummy_na=True)],axis=1).drop([colname],axis=1)
     def one_hot_list(df, colnames):
         for colname in colnames:
             df = one_hot(df, colname)
         return df
+
     df = one_hot_list(df, ['ethnicity', 'gender', 'hospital_admit_source',
                             'icu_admit_source', 'icu_stay_type',
                             'icu_type', 'apache_2_diagnosis', 'apache_3j_diagnosis',
@@ -47,6 +49,7 @@ def load_fhir_data(start_batch=0, batch_size=10000):
     x_test = df_test.drop(columns=['hospital_death']).to_numpy()
     y_test = df_test['hospital_death'].to_numpy()
 
+    #Use double precision
     x_train = x_train.astype("float32")
     x_test = x_test.astype("float32")
 
@@ -57,7 +60,7 @@ def load_fhir_data(start_batch=0, batch_size=10000):
 
 
 
-def load_pb_file(filename):
+def load_pb_file(filename: str):
     """"Returns the graph_def from a saved protobuf file"""
     if not os.path.isfile(filename):
         raise Exception("File, " + filename + " does not exist")
